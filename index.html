@@ -4,10 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chatty — AI Assistant</title>
-  <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+CSSEOF
+cat /home/claude/chatty/css/style.css >> /home/claude/chatty/index.html
+cat >> /home/claude/chatty/index.html << 'HTMLEOF'
+  </style>
 </head>
 <body>
 
@@ -32,9 +36,7 @@
     <input type="text" placeholder="Search conversations…" id="searchInput" />
   </div>
 
-  <nav class="conversations" id="conversationList">
-    <!-- Populated by JS -->
-  </nav>
+  <nav class="conversations" id="conversationList"></nav>
 
   <div class="sidebar-footer">
     <button class="settings-btn" id="settingsBtn" title="Settings">
@@ -51,7 +53,6 @@
 <!-- MAIN CONTENT -->
 <main class="main" id="main">
 
-  <!-- TOP BAR -->
   <header class="topbar">
     <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -63,9 +64,7 @@
         <span id="modelName">Claude 3.5 Sonnet</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div class="model-dropdown" id="modelDropdown">
-        <!-- Populated by JS -->
-      </div>
+      <div class="model-dropdown" id="modelDropdown"></div>
     </div>
 
     <div class="chat-title-wrap">
@@ -82,7 +81,6 @@
     </div>
   </header>
 
-  <!-- CHAT AREA -->
   <section class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
       <div class="welcome-icon">
@@ -121,23 +119,15 @@
     <div class="messages" id="messages"></div>
   </section>
 
-  <!-- INPUT AREA -->
   <footer class="input-area">
     <div class="input-wrap">
       <button class="attach-btn icon-btn" id="attachBtn" title="Attach file">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </button>
       <input type="file" id="fileInput" style="display:none" accept="image/*,.pdf,.txt,.md,.json,.csv" />
-
       <div class="textarea-wrap">
-        <textarea
-          id="messageInput"
-          placeholder="Message Chatty…"
-          rows="1"
-          maxlength="32000"
-        ></textarea>
+        <textarea id="messageInput" placeholder="Message Chatty…" rows="1" maxlength="32000"></textarea>
       </div>
-
       <div class="input-right">
         <span class="char-count" id="charCount"></span>
         <button class="send-btn" id="sendBtn" title="Send (Enter)">
@@ -159,7 +149,6 @@
       </button>
     </div>
     <div class="modal-body">
-
       <div class="settings-section">
         <h3>API Configuration</h3>
         <label class="field-label">OpenRouter API Key
@@ -178,10 +167,8 @@
         <h3>Chat Behaviour</h3>
         <label class="field-label">System Prompt</label>
         <textarea id="systemPromptInput" class="text-input" rows="4" placeholder="You are Chatty, a helpful AI assistant…"></textarea>
-
         <label class="field-label">Temperature <span id="tempVal">0.7</span></label>
         <input type="range" id="tempSlider" min="0" max="2" step="0.05" value="0.7" class="range-input" />
-
         <label class="field-label">Max Tokens</label>
         <input type="number" id="maxTokensInput" value="2048" min="256" max="8192" step="256" class="text-input short" />
       </div>
@@ -194,7 +181,6 @@
           <button class="theme-pill" data-theme="light">Light</button>
           <button class="theme-pill" data-theme="system">System</button>
         </div>
-
         <label class="field-label">Font Size</label>
         <div class="theme-pills">
           <button class="theme-pill" data-size="sm">Small</button>
@@ -219,11 +205,1308 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="js/storage.js"></script>
-<script src="js/models.js"></script>
-<script src="js/api.js"></script>
-<script src="js/markdown.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/app.js"></script>
+<script>
+// ===========================
+//  CHATTY — STORAGE MODULE
+// ===========================
+
+const Storage = (() => {
+  const KEYS = {
+    CONVERSATIONS: 'chatty_conversations',
+    ACTIVE_CONV:   'chatty_active_conv',
+    SETTINGS:      'chatty_settings',
+    API_KEY:       'chatty_api_key',
+  };
+
+  const DEFAULT_SETTINGS = {
+    model:        'anthropic/claude-3.5-sonnet',
+    systemPrompt: 'You are Chatty, a helpful, accurate, and friendly AI assistant. Be concise but thorough. Use markdown formatting when it improves clarity.',
+    temperature:  0.7,
+    maxTokens:    2048,
+    theme:        'dark',
+    fontSize:     'md',
+  };
+
+  // ---- API KEY (separate for clarity) ----
+  function getApiKey() {
+    return localStorage.getItem(KEYS.API_KEY) || '';
+  }
+  function setApiKey(key) {
+    localStorage.setItem(KEYS.API_KEY, key.trim());
+  }
+
+  // ---- SETTINGS ----
+  function getSettings() {
+    try {
+      const raw = localStorage.getItem(KEYS.SETTINGS);
+      return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+    } catch { return { ...DEFAULT_SETTINGS }; }
+  }
+  function saveSettings(partial) {
+    const current = getSettings();
+    localStorage.setItem(KEYS.SETTINGS, JSON.stringify({ ...current, ...partial }));
+  }
+
+  // ---- CONVERSATIONS ----
+  function getConversations() {
+    try {
+      const raw = localStorage.getItem(KEYS.CONVERSATIONS);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+  function saveConversations(convs) {
+    localStorage.setItem(KEYS.CONVERSATIONS, JSON.stringify(convs));
+  }
+
+  function getConversation(id) {
+    return getConversations().find(c => c.id === id) || null;
+  }
+
+  function createConversation(title = 'New conversation') {
+    const conv = {
+      id:        'conv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      title,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages:  [],
+      model:     getSettings().model,
+    };
+    const convs = getConversations();
+    convs.unshift(conv);
+    saveConversations(convs);
+    return conv;
+  }
+
+  function updateConversation(id, patch) {
+    const convs = getConversations().map(c =>
+      c.id === id ? { ...c, ...patch, updatedAt: Date.now() } : c
+    );
+    saveConversations(convs);
+  }
+
+  function deleteConversation(id) {
+    const convs = getConversations().filter(c => c.id !== id);
+    saveConversations(convs);
+    if (getActiveConvId() === id) setActiveConvId(null);
+  }
+
+  function addMessage(convId, message) {
+    const convs = getConversations().map(c => {
+      if (c.id !== convId) return c;
+      return { ...c, messages: [...c.messages, message], updatedAt: Date.now() };
+    });
+    saveConversations(convs);
+  }
+
+  function updateLastMessage(convId, patch) {
+    const convs = getConversations().map(c => {
+      if (c.id !== convId) return c;
+      const messages = [...c.messages];
+      if (messages.length === 0) return c;
+      messages[messages.length - 1] = { ...messages[messages.length - 1], ...patch };
+      return { ...c, messages, updatedAt: Date.now() };
+    });
+    saveConversations(convs);
+  }
+
+  function deleteAllConversations() {
+    localStorage.removeItem(KEYS.CONVERSATIONS);
+    localStorage.removeItem(KEYS.ACTIVE_CONV);
+  }
+
+  // ---- ACTIVE CONVERSATION ----
+  function getActiveConvId() {
+    return localStorage.getItem(KEYS.ACTIVE_CONV) || null;
+  }
+  function setActiveConvId(id) {
+    if (id) localStorage.setItem(KEYS.ACTIVE_CONV, id);
+    else localStorage.removeItem(KEYS.ACTIVE_CONV);
+  }
+
+  // ---- STORAGE SIZE ----
+  function getStorageStats() {
+    let totalBytes = 0;
+    for (const key in localStorage) {
+      if (!localStorage.hasOwnProperty(key)) continue;
+      totalBytes += (localStorage[key].length + key.length) * 2; // UTF-16
+    }
+    const kb = totalBytes / 1024;
+    const mb = kb / 1024;
+    // localStorage typically ~5MB
+    const pct = Math.min((kb / (5 * 1024)) * 100, 100);
+    return {
+      bytes: totalBytes,
+      kb: kb.toFixed(1),
+      mb: mb.toFixed(2),
+      pct: pct.toFixed(1),
+      label: kb < 1024 ? `${kb.toFixed(1)} KB used` : `${mb.toFixed(2)} MB used`,
+    };
+  }
+
+  return {
+    getApiKey, setApiKey,
+    getSettings, saveSettings, DEFAULT_SETTINGS,
+    getConversations, getConversation, createConversation,
+    updateConversation, deleteConversation,
+    addMessage, updateLastMessage, deleteAllConversations,
+    getActiveConvId, setActiveConvId,
+    getStorageStats,
+  };
+})();
+// ===========================
+//  CHATTY — MODELS REGISTRY
+// ===========================
+
+const Models = (() => {
+  const MODELS = [
+    {
+      group: 'Anthropic',
+      items: [
+        { id: 'anthropic/claude-3.5-sonnet',      name: 'Claude 3.5 Sonnet',   desc: 'Best balance of speed & intelligence', badge: 'smart' },
+        { id: 'anthropic/claude-3.5-haiku',        name: 'Claude 3.5 Haiku',    desc: 'Fast and efficient',                  badge: 'fast'  },
+        { id: 'anthropic/claude-3-opus',           name: 'Claude 3 Opus',       desc: 'Most powerful Claude model',          badge: 'smart' },
+      ],
+    },
+    {
+      group: 'OpenAI',
+      items: [
+        { id: 'openai/gpt-4o',                    name: 'GPT-4o',              desc: 'OpenAI flagship model',               badge: 'smart' },
+        { id: 'openai/gpt-4o-mini',               name: 'GPT-4o Mini',         desc: 'Fast, affordable GPT-4 quality',      badge: 'fast'  },
+        { id: 'openai/o1-mini',                   name: 'o1 Mini',             desc: 'Reasoning model, complex tasks',      badge: 'smart' },
+      ],
+    },
+    {
+      group: 'Google',
+      items: [
+        { id: 'google/gemini-2.0-flash-001',      name: 'Gemini 2.0 Flash',    desc: 'Fast multimodal model',               badge: 'fast'  },
+        { id: 'google/gemini-pro-1.5',            name: 'Gemini 1.5 Pro',      desc: '1M token context window',             badge: 'smart' },
+      ],
+    },
+    {
+      group: 'Meta',
+      items: [
+        { id: 'meta-llama/llama-3.3-70b-instruct',name: 'Llama 3.3 70B',       desc: 'Open-source, high quality',           badge: 'free'  },
+        { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B',        desc: 'Lightweight, very fast',              badge: 'free'  },
+      ],
+    },
+    {
+      group: 'Mistral',
+      items: [
+        { id: 'mistralai/mistral-large',          name: 'Mistral Large',       desc: 'Frontier French AI model',            badge: 'smart' },
+        { id: 'mistralai/mistral-nemo',           name: 'Mistral Nemo',        desc: 'Compact, multilingual',               badge: 'fast'  },
+      ],
+    },
+    {
+      group: 'DeepSeek',
+      items: [
+        { id: 'deepseek/deepseek-chat',           name: 'DeepSeek V3',         desc: 'Powerful Chinese AI model',           badge: 'free'  },
+        { id: 'deepseek/deepseek-r1',             name: 'DeepSeek R1',         desc: 'Strong reasoning model',              badge: 'smart' },
+      ],
+    },
+  ];
+
+  function getAll() { return MODELS; }
+
+  function findById(id) {
+    for (const group of MODELS) {
+      const m = group.items.find(i => i.id === id);
+      if (m) return m;
+    }
+    return null;
+  }
+
+  function getDisplayName(id) {
+    return findById(id)?.name || id.split('/').pop();
+  }
+
+  return { getAll, findById, getDisplayName };
+})();
+// ===========================
+//  CHATTY — API MODULE
+// ===========================
+
+const API = (() => {
+  const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+
+  /**
+   * Send messages to OpenRouter with streaming.
+   * @param {object} opts
+   * @param {string} opts.apiKey
+   * @param {string} opts.model
+   * @param {Array}  opts.messages   - [{role, content}]
+   * @param {string} opts.systemPrompt
+   * @param {number} opts.temperature
+   * @param {number} opts.maxTokens
+   * @param {function} opts.onChunk  - called with each text chunk
+   * @param {function} opts.onDone   - called when stream ends
+   * @param {function} opts.onError  - called on error
+   * @returns {AbortController} - call .abort() to cancel
+   */
+  async function sendMessage(opts) {
+    const {
+      apiKey, model, messages, systemPrompt,
+      temperature = 0.7, maxTokens = 2048,
+      onChunk, onDone, onError,
+    } = opts;
+
+    if (!apiKey) {
+      onError('No API key set. Open Settings and add your OpenRouter key.');
+      return null;
+    }
+
+    const controller = new AbortController();
+
+    const payload = {
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      stream: true,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+      ],
+    };
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer':  window.location.origin,
+          'X-Title':       'Chatty AI',
+        },
+        body:   JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        let errMsg = `Error ${res.status}`;
+        try {
+          const errBody = await res.json();
+          errMsg = errBody?.error?.message || errMsg;
+        } catch {}
+        onError(errMsg);
+        return controller;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete last line
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (!trimmed.startsWith('data: ')) continue;
+
+          try {
+            const json = JSON.parse(trimmed.slice(6));
+            const delta = json?.choices?.[0]?.delta?.content;
+            if (delta) onChunk(delta);
+          } catch {}
+        }
+      }
+
+      onDone();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        onDone(); // stream was cancelled — still finalise
+      } else {
+        onError(err.message || 'Network error. Check your connection.');
+      }
+    }
+
+    return controller;
+  }
+
+  /**
+   * Build messages array for API — last N turns for context
+   */
+  function buildMessages(history, maxTurns = 20) {
+    const recent = history.slice(-maxTurns * 2);
+    return recent.map(m => ({
+      role:    m.role,
+      content: m.content,
+    }));
+  }
+
+  return { sendMessage, buildMessages };
+})();
+// ===========================
+//  CHATTY — MARKDOWN RENDERER
+// ===========================
+
+const Markdown = (() => {
+
+  function escape(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function render(text) {
+    if (!text) return '';
+
+    let html = text;
+
+    // ---- Code blocks (``` ... ```) — process first to avoid inner-parsing ----
+    const codeBlocks = [];
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      const idx = codeBlocks.length;
+      codeBlocks.push({ lang: lang || 'text', code: code.trim() });
+      return `\x00CODE_BLOCK_${idx}\x00`;
+    });
+
+    // ---- Inline code ----
+    const inlineCodes = [];
+    html = html.replace(/`([^`\n]+)`/g, (_, code) => {
+      const idx = inlineCodes.length;
+      inlineCodes.push(escape(code));
+      return `\x00INLINE_${idx}\x00`;
+    });
+
+    // ---- Headings ----
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+
+    // ---- Bold & Italic ----
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g,      '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g,           '<em>$1</em>');
+    html = html.replace(/__(.+?)__/g,           '<strong>$1</strong>');
+    html = html.replace(/_(.+?)_/g,             '<em>$1</em>');
+
+    // ---- Strikethrough ----
+    html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+    // ---- Blockquotes ----
+    html = html.replace(/^> (.+)/gm, '<blockquote>$1</blockquote>');
+    // Merge consecutive blockquotes
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+
+    // ---- Horizontal rule ----
+    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr>');
+
+    // ---- Links ----
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    // ---- Images ----
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,
+      '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:8px 0;" />');
+
+    // ---- Tables ----
+    html = renderTables(html);
+
+    // ---- Unordered lists ----
+    html = renderLists(html);
+
+    // ---- Ordered lists ----
+    html = renderOrderedLists(html);
+
+    // ---- Paragraphs ---- (wrap non-tagged lines)
+    html = html.split('\n\n').map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (/^<(h[1-6]|ul|ol|li|blockquote|pre|hr|table|div)/.test(block)) return block;
+      if (block.startsWith('\x00CODE_BLOCK')) return block;
+      // Convert single newlines within paragraph to <br>
+      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+
+    // ---- Restore inline codes ----
+    html = html.replace(/\x00INLINE_(\d+)\x00/g, (_, i) =>
+      `<code>${inlineCodes[i]}</code>`
+    );
+
+    // ---- Restore code blocks ----
+    html = html.replace(/\x00CODE_BLOCK_(\d+)\x00/g, (_, i) => {
+      const { lang, code } = codeBlocks[i];
+      const escapedCode = escape(code);
+      return `<pre><div class="code-header"><span class="code-lang">${escape(lang)}</span><button class="copy-code-btn" onclick="Markdown.copyCode(this)">Copy</button></div><code>${escapedCode}</code></pre>`;
+    });
+
+    return html;
+  }
+
+  function renderTables(html) {
+    return html.replace(/(\|.+\|\n?)+/g, match => {
+      const rows = match.trim().split('\n').filter(r => r.trim());
+      if (rows.length < 2) return match;
+
+      const isHeader = rows[1] && /^\|[-:| ]+\|$/.test(rows[1].trim());
+      if (!isHeader) return match;
+
+      const headerRow = rows[0];
+      const dataRows  = rows.slice(2);
+
+      const parseRow = (row, tag) => {
+        const cells = row.split('|').slice(1, -1);
+        return `<tr>${cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('')}</tr>`;
+      };
+
+      return `<table><thead>${parseRow(headerRow, 'th')}</thead><tbody>${
+        dataRows.map(r => parseRow(r, 'td')).join('')
+      }</tbody></table>`;
+    });
+  }
+
+  function renderLists(html) {
+    // Find blocks of lines starting with - or *
+    return html.replace(/(^|\n)([ ]*[-*] .+(\n|$))+/g, match => {
+      const items = match.trim().split('\n').filter(l => /^\s*[-*] /.test(l));
+      return `<ul>${items.map(i => `<li>${i.replace(/^\s*[-*] /, '')}</li>`).join('')}</ul>`;
+    });
+  }
+
+  function renderOrderedLists(html) {
+    return html.replace(/(^|\n)([ ]*\d+\. .+(\n|$))+/g, match => {
+      const items = match.trim().split('\n').filter(l => /^\s*\d+\. /.test(l));
+      return `<ol>${items.map(i => `<li>${i.replace(/^\s*\d+\. /, '')}</li>`).join('')}</ol>`;
+    });
+  }
+
+  function copyCode(btn) {
+    const code = btn.closest('pre').querySelector('code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    }).catch(() => {
+      btn.textContent = 'Failed';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+  }
+
+  return { render, copyCode };
+})();
+// ===========================
+//  CHATTY — UI MODULE
+// ===========================
+
+const UI = (() => {
+
+  // ---- TOAST ----
+  let toastTimer = null;
+  function showToast(msg, type = '', duration = 2800) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = 'toast'; }, duration);
+  }
+
+  // ---- STORAGE BAR ----
+  function updateStorageBar() {
+    const stats = Storage.getStorageStats();
+    const fill  = document.getElementById('storageFill');
+    const label = document.getElementById('storageLabel');
+    if (fill)  fill.style.width  = stats.pct + '%';
+    if (label) label.textContent = stats.label;
+  }
+
+  // ---- MODEL DROPDOWN ----
+  function buildModelDropdown(currentModel) {
+    const dd = document.getElementById('modelDropdown');
+    dd.innerHTML = '';
+    for (const group of Models.getAll()) {
+      const gl = document.createElement('div');
+      gl.className = 'model-group-label';
+      gl.textContent = group.group;
+      dd.appendChild(gl);
+      for (const m of group.items) {
+        const opt = document.createElement('div');
+        opt.className = 'model-option' + (m.id === currentModel ? ' active' : '');
+        opt.dataset.id = m.id;
+        opt.innerHTML = `
+          <div class="model-option-info">
+            <div class="model-option-name">${m.name}</div>
+            <div class="model-option-desc">${m.desc}</div>
+          </div>
+          <span class="model-badge ${m.badge}">${m.badge}</span>`;
+        dd.appendChild(opt);
+      }
+    }
+  }
+
+  function setModelPill(modelId) {
+    const name = document.getElementById('modelName');
+    if (name) name.textContent = Models.getDisplayName(modelId);
+  }
+
+  // ---- CONVERSATION LIST ----
+  function renderConversationList(conversations, activeId, onSelect, onDelete) {
+    const list = document.getElementById('conversationList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!conversations.length) {
+      list.innerHTML = '<div class="no-convs">No conversations yet.<br>Start a new chat!</div>';
+      return;
+    }
+
+    // Group by date
+    const now   = Date.now();
+    const DAY   = 86400000;
+    const groups = { Today: [], Yesterday: [], 'This week': [], Older: [] };
+
+    for (const c of conversations) {
+      const diff = now - c.updatedAt;
+      if (diff < DAY)         groups['Today'].push(c);
+      else if (diff < 2*DAY)  groups['Yesterday'].push(c);
+      else if (diff < 7*DAY)  groups['This week'].push(c);
+      else                    groups['Older'].push(c);
+    }
+
+    for (const [label, items] of Object.entries(groups)) {
+      if (!items.length) continue;
+      const gl = document.createElement('div');
+      gl.className = 'conv-group-label';
+      gl.textContent = label;
+      list.appendChild(gl);
+
+      for (const c of items) {
+        const el = document.createElement('div');
+        el.className = 'conv-item' + (c.id === activeId ? ' active' : '');
+        el.dataset.id = c.id;
+        el.innerHTML = `
+          <span class="conv-title" title="${escHtml(c.title)}">${escHtml(c.title)}</span>
+          <button class="conv-delete" data-id="${c.id}" title="Delete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>`;
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.conv-delete')) {
+            e.stopPropagation();
+            onDelete(c.id);
+          } else {
+            onSelect(c.id);
+          }
+        });
+        list.appendChild(el);
+      }
+    }
+  }
+
+  // ---- SEARCH FILTER ----
+  function filterConversations(query) {
+    const items = document.querySelectorAll('.conv-item');
+    const q = query.toLowerCase();
+    items.forEach(el => {
+      const title = el.querySelector('.conv-title')?.textContent.toLowerCase() || '';
+      el.style.display = title.includes(q) ? '' : 'none';
+    });
+    document.querySelectorAll('.conv-group-label').forEach(label => {
+      const next = label.nextElementSibling;
+      let hasVisible = false;
+      let sib = label.nextElementSibling;
+      while (sib && !sib.classList.contains('conv-group-label')) {
+        if (sib.style.display !== 'none') hasVisible = true;
+        sib = sib.nextElementSibling;
+      }
+      label.style.display = hasVisible ? '' : 'none';
+    });
+  }
+
+  // ---- MESSAGES ----
+  function renderMessage(msg, convAvatarUrl) {
+    const isUser = msg.role === 'user';
+    const el = document.createElement('div');
+    el.className = `message ${msg.role}`;
+    el.dataset.id = msg.id;
+
+    const time = new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const avatar = isUser
+      ? `<div class="message-avatar">U</div>`
+      : `<div class="message-avatar"><img src="assets/logo.png" alt="Chatty" onerror="this.parentElement.textContent='C'" /></div>`;
+
+    const attachmentHtml = msg.attachment
+      ? `<div class="attachment-preview"><div class="attachment-chip">📎 ${escHtml(msg.attachment.name)}</div></div>`
+      : '';
+
+    el.innerHTML = `
+      <div class="message-meta">
+        ${avatar}
+        <span class="message-role">${isUser ? 'You' : 'Chatty'}</span>
+        <span class="message-time">${time}</span>
+      </div>
+      ${attachmentHtml}
+      <div class="message-content">${isUser ? escHtmlPreserveCode(msg.content) : Markdown.render(msg.content)}</div>
+      <div class="message-actions">
+        <button class="msg-action-btn copy-msg" title="Copy">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+        ${!isUser ? `<button class="msg-action-btn regen-msg" title="Regenerate">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.71"/></svg>
+          Regenerate
+        </button>` : ''}
+      </div>`;
+
+    el.querySelector('.copy-msg').addEventListener('click', () => {
+      navigator.clipboard.writeText(msg.content).then(() => showToast('Copied!', 'success'));
+    });
+
+    return el;
+  }
+
+  function renderTypingIndicator() {
+    const el = document.createElement('div');
+    el.className = 'message assistant';
+    el.id = 'typingMsg';
+    el.innerHTML = `
+      <div class="message-meta">
+        <div class="message-avatar"><img src="assets/logo.png" alt="Chatty" onerror="this.parentElement.textContent='C'" /></div>
+        <span class="message-role">Chatty</span>
+      </div>
+      <div class="message-content">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>`;
+    return el;
+  }
+
+  function updateTypingMessage(el, content, done = false) {
+    const contentDiv = el.querySelector('.message-content');
+    if (!contentDiv) return;
+    if (done) {
+      contentDiv.innerHTML = Markdown.render(content);
+    } else {
+      // Streaming — show raw text with cursor
+      contentDiv.innerHTML = `<p>${escHtmlPreserveCode(content)}<span class="cursor">▋</span></p>`;
+    }
+  }
+
+  function scrollToBottom(smooth = true) {
+    const area = document.getElementById('chatArea');
+    if (!area) return;
+    area.scrollTo({ top: area.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+  }
+
+  function showWelcome(show) {
+    const w = document.getElementById('welcome');
+    const m = document.getElementById('messages');
+    if (w) w.style.display = show ? '' : 'none';
+    if (m) m.style.display = show ? 'none' : '';
+  }
+
+  function clearMessages() {
+    const m = document.getElementById('messages');
+    if (m) m.innerHTML = '';
+  }
+
+  function setChatTitle(title) {
+    const el = document.getElementById('chatTitle');
+    if (el) el.textContent = title;
+  }
+
+  function setSendBtnState(loading) {
+    const btn = document.getElementById('sendBtn');
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+    btn.title = loading ? 'Stop (click)' : 'Send (Enter)';
+  }
+
+  // ---- SETTINGS MODAL ----
+  function openSettings() {
+    const s   = Storage.getSettings();
+    const key = Storage.getApiKey();
+
+    document.getElementById('apiKeyInput').value      = key;
+    document.getElementById('systemPromptInput').value = s.systemPrompt;
+    document.getElementById('tempSlider').value        = s.temperature;
+    document.getElementById('tempVal').textContent     = s.temperature;
+    document.getElementById('maxTokensInput').value    = s.maxTokens;
+
+    // Theme pills
+    document.querySelectorAll('.theme-pill[data-theme]').forEach(el => {
+      el.classList.toggle('active', el.dataset.theme === s.theme);
+    });
+    document.querySelectorAll('.theme-pill[data-size]').forEach(el => {
+      el.classList.toggle('active', el.dataset.size === s.fontSize);
+    });
+
+    document.getElementById('settingsOverlay').classList.add('open');
+  }
+
+  function closeSettings() {
+    document.getElementById('settingsOverlay').classList.remove('open');
+  }
+
+  // ---- HELPERS ----
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // For user messages — preserve line breaks, escape HTML, but don't parse markdown
+  function escHtmlPreserveCode(str) {
+    return escHtml(str).replace(/\n/g, '<br>');
+  }
+
+  // Textarea auto-resize
+  function autoResize(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+  }
+
+  return {
+    showToast, updateStorageBar,
+    buildModelDropdown, setModelPill,
+    renderConversationList, filterConversations,
+    renderMessage, renderTypingIndicator, updateTypingMessage,
+    scrollToBottom, showWelcome, clearMessages, setChatTitle,
+    setSendBtnState,
+    openSettings, closeSettings,
+    escHtml, autoResize,
+  };
+})();
+// ===========================
+//  CHATTY — APP CONTROLLER
+// ===========================
+
+(function () {
+  'use strict';
+
+  // ---- STATE ----
+  let activeConvId    = null;
+  let currentModel    = null;
+  let isStreaming     = false;
+  let abortController = null;
+  let pendingAttachment = null;
+
+  // ---- INIT ----
+  function init() {
+    applySettings();
+    loadActiveConversation();
+    bindEvents();
+    UI.updateStorageBar();
+  }
+
+  // ---- SETTINGS APPLICATION ----
+  function applySettings() {
+    const s = Storage.getSettings();
+    currentModel = s.model;
+
+    // Theme
+    const theme = s.theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+      : s.theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-font', s.fontSize);
+
+    UI.setModelPill(currentModel);
+    UI.buildModelDropdown(currentModel);
+  }
+
+  // ---- LOAD CONVERSATION ----
+  function loadActiveConversation() {
+    const convs = Storage.getConversations();
+    const savedId = Storage.getActiveConvId();
+    activeConvId = (savedId && convs.find(c => c.id === savedId)) ? savedId : null;
+
+    renderSidebar();
+
+    if (activeConvId) {
+      openConversation(activeConvId, false);
+    } else {
+      UI.showWelcome(true);
+      UI.setChatTitle('New conversation');
+    }
+  }
+
+  // ---- SIDEBAR ----
+  function renderSidebar() {
+    const convs = Storage.getConversations();
+    UI.renderConversationList(convs, activeConvId, openConversation, deleteConversation);
+    UI.updateStorageBar();
+  }
+
+  // ---- OPEN CONVERSATION ----
+  function openConversation(id, scroll = true) {
+    activeConvId = id;
+    Storage.setActiveConvId(id);
+
+    const conv = Storage.getConversation(id);
+    if (!conv) { startNewConversation(); return; }
+
+    currentModel = conv.model || Storage.getSettings().model;
+    UI.setModelPill(currentModel);
+    UI.buildModelDropdown(currentModel);
+    UI.setChatTitle(conv.title);
+    UI.clearMessages();
+    UI.showWelcome(false);
+
+    const messages = document.getElementById('messages');
+    for (const msg of conv.messages) {
+      messages.appendChild(UI.renderMessage(msg));
+    }
+
+    if (scroll) UI.scrollToBottom(false);
+    renderSidebar();
+
+    // Close sidebar on mobile after selection
+    if (window.innerWidth <= 680) {
+      document.getElementById('sidebar').classList.remove('mobile-open');
+    }
+  }
+
+  // ---- NEW CONVERSATION ----
+  function startNewConversation() {
+    activeConvId = null;
+    Storage.setActiveConvId(null);
+    UI.showWelcome(true);
+    UI.clearMessages();
+    UI.setChatTitle('New conversation');
+    currentModel = Storage.getSettings().model;
+    UI.setModelPill(currentModel);
+    UI.buildModelDropdown(currentModel);
+    renderSidebar();
+
+    if (window.innerWidth <= 680) {
+      document.getElementById('sidebar').classList.remove('mobile-open');
+    }
+  }
+
+  // ---- DELETE CONVERSATION ----
+  function deleteConversation(id) {
+    Storage.deleteConversation(id);
+    if (activeConvId === id) startNewConversation();
+    else renderSidebar();
+    UI.showToast('Conversation deleted', '');
+  }
+
+  // ---- SEND MESSAGE ----
+  async function sendMessage() {
+    if (isStreaming) {
+      // Stop streaming
+      if (abortController) abortController.abort();
+      return;
+    }
+
+    const input = document.getElementById('messageInput');
+    const text  = input.value.trim();
+    if (!text && !pendingAttachment) return;
+
+    const apiKey = Storage.getApiKey();
+    if (!apiKey) {
+      UI.openSettings();
+      UI.showToast('Please add your OpenRouter API key first', 'error');
+      return;
+    }
+
+    // Create conversation if needed
+    if (!activeConvId) {
+      const title = text.length > 48 ? text.slice(0, 48) + '…' : text;
+      const conv  = Storage.createConversation(title);
+      activeConvId = conv.id;
+      Storage.setActiveConvId(activeConvId);
+      Storage.updateConversation(activeConvId, { model: currentModel });
+    }
+
+    // User message object
+    const userMsg = {
+      id:        'msg_' + Date.now(),
+      role:      'user',
+      content:   text,
+      createdAt: Date.now(),
+      attachment: pendingAttachment || null,
+    };
+
+    // Clear input
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('charCount').textContent = '';
+    pendingAttachment = null;
+    updateAttachmentPreview();
+
+    // Save & render user message
+    Storage.addMessage(activeConvId, userMsg);
+    const messages = document.getElementById('messages');
+    UI.showWelcome(false);
+    messages.appendChild(UI.renderMessage(userMsg));
+    UI.scrollToBottom();
+
+    // Update sidebar title on first message
+    const conv = Storage.getConversation(activeConvId);
+    if (conv && conv.messages.length === 1) {
+      renderSidebar();
+    }
+    UI.setChatTitle(conv?.title || 'Conversation');
+
+    // Typing indicator
+    const typingEl = UI.renderTypingIndicator();
+    messages.appendChild(typingEl);
+    UI.scrollToBottom();
+
+    // Build API payload
+    const settings    = Storage.getSettings();
+    const history     = Storage.getConversation(activeConvId)?.messages || [];
+    const apiMessages = API.buildMessages(history);
+
+    // Stream response
+    isStreaming = true;
+    UI.setSendBtnState(true);
+    let accumulated = '';
+
+    abortController = await API.sendMessage({
+      apiKey:       apiKey,
+      model:        currentModel,
+      messages:     apiMessages,
+      systemPrompt: settings.systemPrompt,
+      temperature:  settings.temperature,
+      maxTokens:    settings.maxTokens,
+
+      onChunk(chunk) {
+        accumulated += chunk;
+        UI.updateTypingMessage(typingEl, accumulated, false);
+        UI.scrollToBottom(false);
+      },
+
+      onDone() {
+        // Replace typing indicator with final message
+        const assistantMsg = {
+          id:        'msg_' + Date.now(),
+          role:      'assistant',
+          content:   accumulated || '*(no response)*',
+          createdAt: Date.now(),
+        };
+        Storage.addMessage(activeConvId, assistantMsg);
+
+        typingEl.replaceWith(UI.renderMessage(assistantMsg));
+
+        // Wire regenerate button
+        const newEl = messages.querySelector(`[data-id="${assistantMsg.id}"]`);
+        newEl?.querySelector('.regen-msg')?.addEventListener('click', () => regenerate(assistantMsg.id));
+
+        UI.scrollToBottom();
+        isStreaming = false;
+        UI.setSendBtnState(false);
+        UI.updateStorageBar();
+        renderSidebar();
+      },
+
+      onError(err) {
+        typingEl.remove();
+        UI.showToast('Error: ' + err, 'error', 4000);
+        isStreaming = false;
+        UI.setSendBtnState(false);
+      },
+    });
+  }
+
+  // ---- REGENERATE ----
+  function regenerate(msgId) {
+    if (isStreaming) return;
+    const conv = Storage.getConversation(activeConvId);
+    if (!conv) return;
+
+    // Find the assistant message and remove it + everything after
+    const idx = conv.messages.findIndex(m => m.id === msgId);
+    if (idx === -1) return;
+
+    const trimmedMessages = conv.messages.slice(0, idx);
+    Storage.updateConversation(activeConvId, { messages: trimmedMessages });
+
+    // Re-render
+    openConversation(activeConvId, false);
+
+    // Re-send the last user message
+    setTimeout(() => {
+      const lastUser = trimmedMessages.filter(m => m.role === 'user').pop();
+      if (!lastUser) return;
+      const input = document.getElementById('messageInput');
+      input.value = lastUser.content;
+      // Remove last user message from storage too so it doesn't duplicate
+      Storage.updateConversation(activeConvId, { messages: trimmedMessages.slice(0, -1) });
+      openConversation(activeConvId, false);
+      sendMessage();
+    }, 50);
+  }
+
+  // ---- EXPORT CHAT ----
+  function exportChat() {
+    if (!activeConvId) { UI.showToast('No active conversation', ''); return; }
+    const conv = Storage.getConversation(activeConvId);
+    if (!conv) return;
+
+    const lines = [`# ${conv.title}`, `*Exported from Chatty — ${new Date().toLocaleString()}*`, ''];
+    for (const msg of conv.messages) {
+      lines.push(`## ${msg.role === 'user' ? 'You' : 'Chatty'}`);
+      lines.push(msg.content);
+      lines.push('');
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `chatty-${conv.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    UI.showToast('Chat exported', 'success');
+  }
+
+  function exportAll() {
+    const convs = Storage.getConversations();
+    const data  = JSON.stringify(convs, null, 2);
+    const blob  = new Blob([data], { type: 'application/json' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href      = url;
+    a.download  = `chatty-all-conversations-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    UI.showToast('All conversations exported', 'success');
+  }
+
+  // ---- FILE ATTACHMENT ----
+  function handleFile(file) {
+    if (!file) return;
+    const maxMb = 5;
+    if (file.size > maxMb * 1024 * 1024) {
+      UI.showToast(`File too large (max ${maxMb}MB)`, 'error'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingAttachment = { name: file.name, type: file.type, data: e.target.result };
+      updateAttachmentPreview();
+    };
+    if (file.type.startsWith('text') || file.type === 'application/json') {
+      reader.readAsText(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function updateAttachmentPreview() {
+    const wrap = document.getElementById('attachPreview');
+    if (!pendingAttachment) { if (wrap) wrap.remove(); return; }
+
+    let preview = document.getElementById('attachPreview');
+    if (!preview) {
+      preview = document.createElement('div');
+      preview.id = 'attachPreview';
+      preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-tertiary);border-top:1px solid var(--border);font-size:12px;color:var(--text-secondary);';
+      document.querySelector('.input-area').prepend(preview);
+    }
+    preview.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      ${UI.escHtml(pendingAttachment.name)}
+      <button onclick="document.getElementById('attachPreview').remove();pendingAttachment=null;" style="margin-left:auto;color:var(--text-muted);font-size:18px;line-height:1;padding:0 4px;background:none;border:none;cursor:pointer;">×</button>`;
+  }
+
+  // ---- BIND EVENTS ----
+  function bindEvents() {
+    // New chat
+    document.getElementById('newChatBtn').addEventListener('click', startNewConversation);
+
+    // Send
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+    // Input — Enter to send, Shift+Enter for newline
+    const input = document.getElementById('messageInput');
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    input.addEventListener('input', () => {
+      UI.autoResize(input);
+      const len = input.value.length;
+      const counter = document.getElementById('charCount');
+      counter.textContent = len > 28000 ? `${len}/32000` : '';
+    });
+
+    // Sidebar toggle
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      if (window.innerWidth <= 680) {
+        sidebar.classList.toggle('mobile-open');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+    });
+
+    // Model dropdown
+    const modelPill = document.getElementById('modelPill');
+    const modelDd   = document.getElementById('modelDropdown');
+    modelPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modelDd.classList.toggle('open');
+    });
+    modelDd.addEventListener('click', (e) => {
+      const opt = e.target.closest('.model-option');
+      if (!opt) return;
+      currentModel = opt.dataset.id;
+      UI.setModelPill(currentModel);
+      UI.buildModelDropdown(currentModel);
+      modelDd.classList.remove('open');
+      // Save to settings and active conversation
+      Storage.saveSettings({ model: currentModel });
+      if (activeConvId) Storage.updateConversation(activeConvId, { model: currentModel });
+      UI.showToast(`Model: ${Models.getDisplayName(currentModel)}`, 'success');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.model-selector-wrap')) modelDd.classList.remove('open');
+    });
+
+    // Capability cards
+    document.querySelectorAll('.cap-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const prompt = card.dataset.prompt;
+        const input  = document.getElementById('messageInput');
+        input.value  = prompt;
+        UI.autoResize(input);
+        input.focus();
+      });
+    });
+
+    // Search conversations
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      UI.filterConversations(e.target.value);
+    });
+
+    // Export
+    document.getElementById('exportBtn').addEventListener('click', exportChat);
+
+    // Clear chat
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (!activeConvId) return;
+      if (!confirm('Clear all messages in this conversation?')) return;
+      Storage.updateConversation(activeConvId, { messages: [] });
+      openConversation(activeConvId, false);
+      UI.showToast('Chat cleared', '');
+    });
+
+    // File attach
+    document.getElementById('attachBtn').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      handleFile(e.target.files[0]);
+      e.target.value = ''; // reset so same file can be re-selected
+    });
+
+    // Drag & drop
+    const chatArea = document.getElementById('chatArea');
+    chatArea.addEventListener('dragover', (e) => { e.preventDefault(); chatArea.style.outline = '2px dashed var(--accent)'; });
+    chatArea.addEventListener('dragleave', () => { chatArea.style.outline = ''; });
+    chatArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      chatArea.style.outline = '';
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    // Settings
+    document.getElementById('settingsBtn').addEventListener('click', UI.openSettings);
+    document.getElementById('settingsClose').addEventListener('click', UI.closeSettings);
+    document.getElementById('cancelSettings').addEventListener('click', UI.closeSettings);
+    document.getElementById('settingsOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) UI.closeSettings();
+    });
+
+    // Settings — temp slider
+    document.getElementById('tempSlider').addEventListener('input', (e) => {
+      document.getElementById('tempVal').textContent = e.target.value;
+    });
+
+    // Settings — theme pills
+    document.querySelectorAll('.theme-pill[data-theme]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-pill[data-theme]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    document.querySelectorAll('.theme-pill[data-size]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-pill[data-size]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // API key visibility toggle
+    document.getElementById('toggleApiVis').addEventListener('click', () => {
+      const inp = document.getElementById('apiKeyInput');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+
+    // Save settings
+    document.getElementById('saveSettings').addEventListener('click', () => {
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      Storage.setApiKey(apiKey);
+
+      const activeTheme = document.querySelector('.theme-pill[data-theme].active')?.dataset.theme || 'dark';
+      const activeSize  = document.querySelector('.theme-pill[data-size].active')?.dataset.size  || 'md';
+
+      Storage.saveSettings({
+        systemPrompt: document.getElementById('systemPromptInput').value,
+        temperature:  parseFloat(document.getElementById('tempSlider').value),
+        maxTokens:    parseInt(document.getElementById('maxTokensInput').value) || 2048,
+        theme:        activeTheme,
+        fontSize:     activeSize,
+      });
+
+      applySettings();
+      UI.closeSettings();
+      UI.showToast('Settings saved', 'success');
+    });
+
+    // Clear all / export all
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      if (!confirm('Delete ALL conversations permanently? This cannot be undone.')) return;
+      Storage.deleteAllConversations();
+      startNewConversation();
+      UI.showToast('All conversations deleted', '');
+    });
+    document.getElementById('exportAllBtn').addEventListener('click', exportAll);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('searchInput').focus();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'n') {
+        e.preventDefault();
+        startNewConversation();
+      }
+      if (e.key === 'Escape') {
+        document.getElementById('modelDropdown').classList.remove('open');
+        UI.closeSettings();
+      }
+    });
+
+    // Paste image directly into input
+    document.addEventListener('paste', (e) => {
+      const item = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'));
+      if (item) {
+        const file = item.getAsFile();
+        if (file) handleFile(file);
+      }
+    });
+  }
+
+  // ---- BOOT ----
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
 </body>
 </html>
