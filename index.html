@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatty — AI Assistant</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-wrap" title="Chatty">
+      <img src="assets/hided.png" alt="Chatty Logo" class="logo-hidden" id="logoHidden" onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex'" />
+      <img src="assets/logo.png" alt="Chatty Full Logo" class="logo-full" id="logoFull" onerror="this.style.display='none'" />
+      <div class="logo-fallback" id="logoFallback">
+        <span class="logo-letter">C</span>
+        <span class="logo-letter-full">Chatty</span>
+      </div>
+    </div>
+    <button class="new-chat-btn" id="newChatBtn" title="New conversation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <div class="sidebar-search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Search conversations…" id="searchInput" />
+  </div>
+
+  <nav class="conversations" id="conversationList">
+    <!-- Populated by JS -->
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="settings-btn" id="settingsBtn" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Settings
+    </button>
+    <div class="storage-info" id="storageInfo">
+      <div class="storage-bar"><div class="storage-fill" id="storageFill"></div></div>
+      <span id="storageLabel">0 KB used</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="main">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <div class="model-selector-wrap">
+      <button class="model-pill" id="modelPill">
+        <span class="model-dot"></span>
+        <span id="modelName">Claude 3.5 Sonnet</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="model-dropdown" id="modelDropdown">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <div class="chat-title-wrap">
+      <span class="chat-title" id="chatTitle">New conversation</span>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="exportBtn" title="Export chat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="icon-btn" id="clearBtn" title="Clear chat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- CHAT AREA -->
+  <section class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">
+        <img src="assets/logo.png" alt="Chatty" onerror="this.parentElement.innerHTML='<span class=\'w-letter\'>C</span>'" />
+      </div>
+      <h1>Hello, I'm <em>Chatty</em></h1>
+      <p>Your intelligent AI assistant powered by the best models. Ask me anything.</p>
+      <div class="capability-cards">
+        <div class="cap-card" data-prompt="Explain quantum entanglement in simple terms">
+          <div class="cap-icon">🔭</div>
+          <span>Explain concepts</span>
+        </div>
+        <div class="cap-card" data-prompt="Write a Python function to parse JSON from an API response">
+          <div class="cap-icon">💻</div>
+          <span>Write code</span>
+        </div>
+        <div class="cap-card" data-prompt="Help me brainstorm 10 startup ideas for 2025">
+          <div class="cap-icon">💡</div>
+          <span>Brainstorm ideas</span>
+        </div>
+        <div class="cap-card" data-prompt="Translate 'The sun sets beautifully over the mountains' to French, Spanish and Japanese">
+          <div class="cap-icon">🌐</div>
+          <span>Translate text</span>
+        </div>
+        <div class="cap-card" data-prompt="Summarize the key points of climate change in 5 bullet points">
+          <div class="cap-icon">📋</div>
+          <span>Summarize info</span>
+        </div>
+        <div class="cap-card" data-prompt="Write a short story about a robot who discovers music for the first time">
+          <div class="cap-icon">✍️</div>
+          <span>Creative writing</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+  </section>
+
+  <!-- INPUT AREA -->
+  <footer class="input-area">
+    <div class="input-wrap">
+      <button class="attach-btn icon-btn" id="attachBtn" title="Attach file">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <input type="file" id="fileInput" style="display:none" accept="image/*,.pdf,.txt,.md,.json,.csv" />
+
+      <div class="textarea-wrap">
+        <textarea
+          id="messageInput"
+          placeholder="Message Chatty…"
+          rows="1"
+          maxlength="32000"
+        ></textarea>
+      </div>
+
+      <div class="input-right">
+        <span class="char-count" id="charCount"></span>
+        <button class="send-btn" id="sendBtn" title="Send (Enter)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="input-hint">Chatty can make mistakes. Verify important info.</div>
+  </footer>
+</main>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" id="settingsModal">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="modal-close" id="settingsClose">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <h3>API Configuration</h3>
+        <label class="field-label">OpenRouter API Key
+          <a href="https://openrouter.ai/keys" target="_blank" class="field-link">Get key →</a>
+        </label>
+        <div class="api-key-wrap">
+          <input type="password" id="apiKeyInput" placeholder="sk-or-v1-…" class="text-input" />
+          <button class="toggle-vis-btn" id="toggleApiVis" title="Show/hide key">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <p class="field-hint">Your key is stored only in your browser's localStorage — never sent anywhere except OpenRouter.</p>
+      </div>
+
+      <div class="settings-section">
+        <h3>Chat Behaviour</h3>
+        <label class="field-label">System Prompt</label>
+        <textarea id="systemPromptInput" class="text-input" rows="4" placeholder="You are Chatty, a helpful AI assistant…"></textarea>
+
+        <label class="field-label">Temperature <span id="tempVal">0.7</span></label>
+        <input type="range" id="tempSlider" min="0" max="2" step="0.05" value="0.7" class="range-input" />
+
+        <label class="field-label">Max Tokens</label>
+        <input type="number" id="maxTokensInput" value="2048" min="256" max="8192" step="256" class="text-input short" />
+      </div>
+
+      <div class="settings-section">
+        <h3>Appearance</h3>
+        <label class="field-label">Theme</label>
+        <div class="theme-pills">
+          <button class="theme-pill active" data-theme="dark">Dark</button>
+          <button class="theme-pill" data-theme="light">Light</button>
+          <button class="theme-pill" data-theme="system">System</button>
+        </div>
+
+        <label class="field-label">Font Size</label>
+        <div class="theme-pills">
+          <button class="theme-pill" data-size="sm">Small</button>
+          <button class="theme-pill active" data-size="md">Medium</button>
+          <button class="theme-pill" data-size="lg">Large</button>
+        </div>
+      </div>
+
+      <div class="settings-section danger-zone">
+        <h3>Data</h3>
+        <button class="danger-btn" id="clearAllBtn">Clear all conversations</button>
+        <button class="danger-btn" id="exportAllBtn">Export all conversations</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelSettings">Cancel</button>
+      <button class="btn-primary" id="saveSettings">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/storage.js"></script>
+<script src="js/models.js"></script>
+<script src="js/api.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
